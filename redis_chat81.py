@@ -4,7 +4,6 @@ import redis
 import time
 import json
 
-
 '''
 # 使用 gunicorn 启动
 gunicorn --worker-class=gevent -t 9999 redischat:app
@@ -23,18 +22,30 @@ app = flask.Flask(__name__)
 app.secret_key = 'key'
 
 # 发布聊天广播的 redis 频道
-chat_channel = 'chat'
+chat_channel = ['publish']
 
 
-def stream():
+def stream(channel='publish'):
     '''
     监听 redis 广播并 sse 到客户端
     '''
+    print('in stream, channel ', channel)
+    global chat_channel
     # 对每一个用户 创建一个[发布订阅]对象
     pubsub = red.pubsub()
     # 订阅广播频道
-    pubsub.subscribe(chat_channel)
+    print(channel in chat_channel)
+    if channel in chat_channel:
+        print('channel in chat_channel')
+        pass
+    else:
+        print('new channel')
+        chat_channel.append(channel)
+
+    print('subscribe channel')
+    pubsub.subscribe(channel)
     # 监听订阅的广播
+    print('listen')
     for message in pubsub.listen():
         print(message)
         if message['type'] == 'message':
@@ -43,9 +54,9 @@ def stream():
             yield 'data: {}\n\n'.format(data)
 
 
-@app.route('/subscribe')
-def subscribe():
-    return flask.Response(stream(), mimetype="text/event-stream")
+@app.route('/subscribe/<string:channel>')
+def subscribe(channel='publish'):
+    return flask.Response(stream(channel), mimetype="text/event-stream")
 
 
 @app.route('/')
@@ -57,8 +68,8 @@ def current_time():
     return int(time.time())
 
 
-@app.route('/chat/add', methods=['POST'])
-def chat_add():
+@app.route('/<string:channel>/chat/add', methods=['POST'])
+def chat_add(channel='publish'):
     msg = request.get_json()
     name = msg.get('name', '')
     if name == '':
@@ -70,9 +81,13 @@ def chat_add():
         'created_time': current_time()
     }
     message = json.dumps(r, ensure_ascii=False)
-    print('debug', message)
+    print('debug\nmessge: {}\nchannel: {}'.format(message, channel))
     # 用 redis 发布消息
-    red.publish(chat_channel, message)
+    if channel in chat_channel:
+        red.publish(channel, message)
+    else:
+        # auto add a new channel or warn user ?
+        pass
     return 'OK'
 
 
