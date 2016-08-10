@@ -22,10 +22,10 @@ app = flask.Flask(__name__)
 app.secret_key = 'key'
 
 # 发布聊天广播的 redis 频道
-chat_channel = ['publish']
+chat_channel = ['public', 'private', 'protected']
 
 
-def stream(channel='publish'):
+def stream(channel='public'):
     '''
     监听 redis 广播并 sse 到客户端
     '''
@@ -39,8 +39,8 @@ def stream(channel='publish'):
         print('channel in chat_channel')
         pass
     else:
-        print('new channel')
-        chat_channel.append(channel)
+        print('no channel')
+        channel = 'public'
 
     print('subscribe channel')
     pubsub.subscribe(channel)
@@ -55,7 +55,7 @@ def stream(channel='publish'):
 
 
 @app.route('/subscribe/<string:channel>')
-def subscribe(channel='publish'):
+def subscribe(channel='public'):
     return flask.Response(stream(channel), mimetype="text/event-stream")
 
 
@@ -69,7 +69,7 @@ def current_time():
 
 
 @app.route('/<string:channel>/chat/add', methods=['POST'])
-def chat_add(channel='publish'):
+def chat_add(channel='public'):
     msg = request.get_json()
     name = msg.get('name', '')
     if name == '':
@@ -89,6 +89,11 @@ def chat_add(channel='publish'):
         # auto add a new channel or warn user ?
         pass
     return 'OK'
+
+
+@app.route('/channel-list/')
+def channel_list():
+    return json.dumps({'channels': chat_channel})
 
 
 if __name__ == '__main__':

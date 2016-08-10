@@ -1,193 +1,39 @@
-<html>
+<!doctype html>
+<html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>聊天室</title>
-    <link rel="stylesheet" href="/static/pure-min.css">
-    <link rel="stylesheet" href="/static/chat.css">
-    <script src="/static/jquery.min.js"></script>
-    <script type="text/javascript">
-        var log = function () {
-            console.log(arguments);
-        };
-
-        var chatItemTemplate = function (chat) {
-            var name    = chat.name;
-            var content = chat.content;
-            var time    = chat.created_time;
-            var t       = `
-        <div class="chat-item burstStart read burstFinal">
-            <div class="chat-item__container">
-                <div class="chat-item__aside">
-                    <div class="chat-item__avatar">
-                        <span class="widget">
-                            <div class="trpDisplayPicture avatar-s">
-                                <img src="https://avatars0.githubusercontent.com/u/7235381?v=3&amp;s=30"  height="30" width="30" class="avatar__image" alt="">
-                            </div>
-                        </span>
-                    </div>
-                </div>
-                <div class="chat-item__actions js-chat-item-actions">
-                    <i class="chat-item__icon icon-check chat-item__icon--read chat-item__icon--read-by-some js-chat-item-readby"></i>
-                    <i class="chat-item__icon icon-ellipsis"></i>
-                </div>
-                <div class="chat-item__content">
-                    <div class="chat-item__details">
-                        <div class="chat-item__from js-chat-item-from">${name}</div>
-                        <a class="chat-item__time js-chat-time" href="#">
-                            <time data-time="${time}"></time>
-                        </a>
-                    </div>
-                    <div class="chat-item__text js-chat-item-text">${content}</div>
-                </div>
-            </div>
-        </div>`;
-            return t;
-        };
-
-        var insertChatItem = function (chat) {
-            var chats = $('#id-div-chats');
-            var t     = chatItemTemplate(chat);
-            chats.append(t);
-        };
-
-        var chatResponse = function (r) {
-            var chat = JSON.parse(r);
-            insertChatItem(chat);
-        };
-
-        var subscribe = function (channel) {
-            var sse       = new EventSource("/subscribe/"+channel);
-            sse.onmessage = function (e) {
-                log(e, e.data);
-                chatResponse(e.data);
-            };
-        };
-
-        var sendMessage = function (channel) {
-            log(channel);
-            var name    = $('#id-input-name').val();
-            var content = $('#id-input-content').val();
-            var message = {
-                name:    name,
-                content: content
-            };
-
-            var request = {
-                url:         "/"+channel+'/chat/add',
-                type:        'post',
-                contentType: 'application/json',
-                data:        JSON.stringify(message),
-                success:     function (r) {
-                    log('success', r);
-                },
-                error:       function (err) {
-                    log('error', err);
-                }
-            };
-            $.ajax(request);
-        };
-
-        var switchChannel = function (channel) {
-            $("#id-div-chats").html("");
-            $("#id-label-channel").html(channel);
-            subscribe(channel);
-
-        };
-
-        var bindActions = function () {
-            $('#id-button-send').on('click', function () {
-                // $('#id-input-content').val();
-                sendMessage($("#id-label-channel").html());
-            });
-            $("#id-button-change-channel").on("click", function () {
-                switchChannel($("#id-input-channel").val());
-            })
-        };
-
-        // long time ago
-        var longTimeAgo = function () {
-            var timeAgo = function (time, ago) {
-                return Math.round(time) + ago;
-            };
-
-            $('time').each(function (i, e) {
-                var past     = parseInt(e.dataset.time);
-                var now      = Math.round(new Date().getTime() / 1000);
-                var seconds  = now - past;
-                var ago      = seconds / 60;
-                // log('time ago', e, past, now, ago);
-                var oneHour  = 60;
-                var oneDay   = oneHour * 24;
-                // var oneWeek = oneDay * 7;
-                var oneMonth = oneDay * 30;
-                var oneYear  = oneMonth * 12;
-                var s        = '';
-                if (seconds < 60) {
-                    s = timeAgo(seconds, ' 秒前')
-                } else if (ago < oneHour) {
-                    s = timeAgo(ago, ' 分钟前');
-                } else if (ago < oneDay) {
-                    s = timeAgo(ago / oneHour, ' 小时前');
-                } else if (ago < oneMonth) {
-                    s = timeAgo(ago / oneDay, ' 天前');
-                } else if (ago < oneYear) {
-                    s = timeAgo(ago / oneMonth, ' 月前');
-                }
-                $(e).text(s);
-            });
-        };
-
-        var __main = function () {
-            subscribe($("#id-label-channel").html());
-            bindActions();
-            setInterval(function () {
-                longTimeAgo();
-            }, 1000);
-        };
-
-        $(document).ready(function () {
-            __main();
-        });
-    </script>
+    <link rel="stylesheet" href="/static/css/pure-min.css">
+    <link rel="stylesheet" href="/static/css/chat.css">
 </head>
+<body data-channel="public">
+<div id="layout">
+    <a href="#menu" id="menuLink" class="menu-link">
+        <span></span>
+    </a>
+    <div id="menu">
+        <div class="pure-menu">
+            <a class="pure-menu-heading" href="#">聊天室</a>
 
-<body>
-<h1>聊天室</h1>
-<form class="pure-form pure-form-stacked">
-    <label id="id-label-channel">publish</label>
-    <input id="id-input-channel" type="text" placeholder="频道">
-    <button id="id-button-change-channel" type="button">切换频道</button>
-</form>
-<form class="pure-form pure-form-stacked">
-    <input id='id-input-name' type="text" placeholder="名字">
-    <textarea id='id-input-content' placeholder="内容"></textarea>
-    <button id='id-button-send' type='button'>发送消息</button>
-</form>
-<div id="id-div-chats">
-    <!-- <div class="chat-item model-id-579cbda07fd9f73e16eca0a6 burstStart read burstFinal">
-        <div class="chat-item__container">
-            <div class="chat-item__aside">
-                <div class="chat-item__avatar">
-                    <span class="widget">
-                        <div class="trpDisplayPicture avatar-5592912d15522ed4b3e316df avatar-s   ">
-                            <img src="https://avatars0.githubusercontent.com/u/7235381?v=3&amp;s=30"  height="30" width="30" class="avatar__image" alt="">
-                        </div>
-                    </span>
-                </div>
-            </div>
-            <div class="chat-item__actions js-chat-item-actions">
-                <i class="chat-item__icon icon-check chat-item__icon-read chat-item__icon-read-by-some js-chat-item-readby"></i>
-                <i class="chat-item__icon icon-ellipsis"></i>
-            </div>
-            <div class="chat-item__content">
-                <div class="chat-item__details">
-                    <div class="chat-item__from js-chat-item-from">小瓜</div>
-                    <a class="chat-item__time js-chat-time" href="#" title="July 30, 2016 10:45 PM" data-disable-routing="true">Jul 30 22:45</a>
-                </div>
-                <div class="chat-item__text js-chat-item-text">This is a chat of greetings.</div>
-            </div>
+            <ul class="pure-menu-list" id="id-channel-list">
+            </ul>
         </div>
-    </div> -->
+    </div>
+
+    <div id="main">
+        <div class="content" id="id-div-chats">
+        </div>
+        <div class="editor" >
+            <form class="pure-form pure-form-stacked">
+                <input id='id-input-name' type="text" placeholder="名字">
+                <textarea id='id-input-content' placeholder="内容"></textarea>
+                <button id='id-button-send' type='button'>发送消息</button>
+            </form>
+        </div>
+    </div>
 </div>
+<script type="text/javascript" src="/static/js/jquery.min.js"></script>
+<script type="text/javascript" src="/static/js/chat.js">    </script>
 </body>
 </html>
